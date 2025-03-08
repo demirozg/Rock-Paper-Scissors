@@ -3,6 +3,9 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/fi
 
 let playerId;
 let gameRef;
+let waitingScreen = document.getElementById("waiting-screen");
+let gameContainer = document.getElementById("game");
+let resultContainer = document.getElementById("result");
 
 // Wait for authentication before setting playerId
 onAuthStateChanged(auth, (user) => {
@@ -11,7 +14,6 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById("player-id").innerText = `Your ID: ${playerId}`;
         gameRef = ref(database, "game");
 
-        // Start listening for opponent moves
         listenForMoves();
     } else {
         console.error("User is not authenticated.");
@@ -30,13 +32,21 @@ function makeChoice(choice) {
 function listenForMoves() {
     onValue(gameRef, (snapshot) => {
         let data = snapshot.val();
-        if (data && Object.keys(data).length === 2) {
+        if (data) {
             let players = Object.keys(data);
-            let choice1 = data[players[0]].choice;
-            let choice2 = data[players[1]].choice;
+            
+            if (players.length === 2) {
+                // Hide waiting screen, show game
+                waitingScreen.classList.add("hidden");
+                gameContainer.classList.remove("hidden");
+                resultContainer.classList.remove("hidden");
 
-            let winner = determineWinner(choice1, choice2);
-            document.getElementById("winner").innerText = winner;
+                let choice1 = data[players[0]].choice;
+                let choice2 = data[players[1]].choice;
+
+                let winner = determineWinner(choice1, choice2);
+                document.getElementById("winner").innerText = winner;
+            }
         }
     });
 }
