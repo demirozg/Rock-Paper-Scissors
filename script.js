@@ -1,35 +1,46 @@
-import { database, ref, set, onValue } from "./firebase-config.js";
+import { database, ref, set, onValue, auth } from "./firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-let playerId = Math.random().toString(36).substr(2, 5);
-document.getElementById("player-id").innerText = `Your ID: ${playerId}`;
+let playerId;
+let gameRef;
 
-let gameRef = ref(database, "game");
+// Wait for authentication before setting playerId
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        playerId = user.uid;
+        document.getElementById("player-id").innerText = `Your ID: ${playerId}`;
+        gameRef = ref(database, "game");
 
-// Function to make a choice
+        // Start listening for opponent moves
+        listenForMoves();
+    } else {
+        console.error("User is not authenticated.");
+    }
+});
+
 function makeChoice(choice) {
+    if (!playerId) {
+        console.error("Player ID not set. Wait for authentication.");
+        return;
+    }
+
     set(ref(database, `game/${playerId}`), { choice: choice });
 }
 
-// Listen for opponent choices
-onValue(gameRef, (snapshot) => {
-    let data = snapshot.val();
-    if (data) {
-        let players = Object.keys(data);
-        
-        if (players.length === 2) {
-            let player1 = players[0];
-            let player2 = players[1];
-
-            let choice1 = data[player1].choice;
-            let choice2 = data[player2].choice;
+function listenForMoves() {
+    onValue(gameRef, (snapshot) => {
+        let data = snapshot.val();
+        if (data && Object.keys(data).length === 2) {
+            let players = Object.keys(data);
+            let choice1 = data[players[0]].choice;
+            let choice2 = data[players[1]].choice;
 
             let winner = determineWinner(choice1, choice2);
             document.getElementById("winner").innerText = winner;
         }
-    }
-});
+    });
+}
 
-// Function to determine the winner
 function determineWinner(choice1, choice2) {
     if (choice1 === choice2) return "It's a tie!";
     if ((choice1 === "rock" && choice2 === "scissors") ||
